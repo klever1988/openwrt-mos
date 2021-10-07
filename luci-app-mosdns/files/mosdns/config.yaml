@@ -35,6 +35,7 @@ plugin:
           exec:
             - forward_remote
         - if:
+            - query_is_non_local_domain
             - _qtype_AAAA
           exec:
             - _block_with_empty_response
@@ -42,9 +43,10 @@ plugin:
         - primary:
             - forward_local
             - if:
-                - '!response_has_local_ip'
+                - response_has_local_ip   # 如果(本地)应答包含本地 IP
               exec:
-                - _drop_response
+                - _end                    # 就直接采用结果
+        - forward_remote              # 否则去请求远程服务器的结果
           secondary:
             - forward_remote
             - if:
@@ -52,6 +54,10 @@ plugin:
               exec:
                 - _block_with_empty_response
                 - _end
+            - if:
+                - !response_has_local_ip
+              exec:
+                - _blacklist
           fast_fallback: 300
           always_standby: true
   - tag: forward_local
@@ -93,3 +99,10 @@ plugin:
     args:
       ip:
         - 'ext:./geoip.dat:cn'
+  - tag: blacklist
+    type: 'ipset'
+    args:
+      set_name4: ''   # 如果非空，存放 ipv4 地址到这个表。这个表属性 family 需为 `inet`。
+      set_name6: ''   # 如果非空，存放 ipv6 地址到这个表。这个表属性 family 需为 `inet6`。
+      mask4: 24       # 写入 ipv4 地址时使用的掩码。默认: 24。
+      mask6: 32       # 写入 ipv6 地址时使用的掩码。默认: 32。
