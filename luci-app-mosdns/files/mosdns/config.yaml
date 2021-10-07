@@ -46,7 +46,7 @@ plugin:
                 - response_has_local_ip   # 如果(本地)应答包含本地 IP
               exec:
                 - _end                    # 就直接采用结果
-        - secondary:
+          secondary:
             - forward_remote
             - if:
                 - _qtype_AAAA
