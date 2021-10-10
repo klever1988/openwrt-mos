@@ -28,7 +28,6 @@ restore_setting()
 	uci set dhcp.@dnsmasq[0].noresolv="0"
 	uci commit dhcp
 	uci set shadowsocksr.@global[0].pdnsd_enable='1'
-	uci set shadowsocksr.@global[0].tunnel_forward='8.8.4.4:53'
 	uci commit shadowsocksr
 }
 
@@ -39,7 +38,6 @@ prepare_setting()
 	uci set dhcp.@dnsmasq[0].noresolv="1"
 	uci commit dhcp
 	uci set shadowsocksr.@global[0].pdnsd_enable='0'
-	uci del shadowsocksr.@global[0].tunnel_forward
 	uci commit shadowsocksr
 }
 
