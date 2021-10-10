@@ -1,5 +1,5 @@
 log:
-  level: info
+  level: debug
   file: ''
 
 plugin:
@@ -15,13 +15,13 @@ plugin:
         - main_sequence   # 分流逻辑
       server:       # 服务器监听地址与协议。
         - protocol: udp
-          addr: 127.0.0.1:6553
+          addr: 127.0.0.1:5335
         - protocol: tcp
-          addr: 127.0.0.1:6553
+          addr: 127.0.0.1:5335
         - protocol: udp
-          addr: '[::1]:6553'
+          addr: '[::1]:5335'
         - protocol: tcp
-          addr: '[::1]:6553'
+          addr: '[::1]:5335'
 
   ################# 可执行插件 ################
 
@@ -30,12 +30,6 @@ plugin:
     type: sequence
     args:
       exec:
-        - if:
-            - query_is_ad_domain    # 已知的广告域名
-          exec:
-            - _block_with_nxdomain  # 用 NXDOMAIN 屏蔽
-            - _end
-        
         - if_and:
             - '!query_is_local_domain'
             - _qtype_AAAA           # 如果请求的 AAAA (ipv6) 类型
@@ -48,25 +42,29 @@ plugin:
             - '!_query_is_common'     # 和不常见的请求类型
           exec:
             - forward_local           # 用本地服务器
-            - _end
+            - if:
+                - response_has_local_ip
+              exec:
+                - _end
 
-        - if:
-            - query_is_non_local_domain  # 已知的非本地域名
-          exec:
-            - forward_remote             # 用远程服务器
-            - _end
+        - primary:
+            - forward_local
+            - if:
+                - '!response_has_local_ip'
+              exec:
+                - _drop_response
+          secondary:
+            - forward_remote
+            - if:
+                - '!response_has_local_ip'
+              exec:
+                - blacklist
+          fast_fallback: 200  # 这里建议设置成 local 服务器正常延时的 2~5 倍。
+                              # 这个延时保证了 local 延时偶尔变高时，其结果不会被 remote 抢答。
+                              # 如果 local 超过这个延时还没响应，可以假设 local 出现了问题。
+                              # 这时用就采用 remote 的应答。
+          always_standby: true
 
-        # 剩下的未知域名用 IP 分流。
-        - forward_local               # 先请求转发至本地服务器
-        - if:
-            - response_has_local_ip   # 如果(本地)应答包含本地 IP
-          exec:
-            - _end                    # 就直接采用结果
-        - forward_remote              # 否则去请求远程服务器的结果
-        - if:
-            - '!response_has_local_ip'
-          exec:
-            - blacklist
 
   # 转发请求至本地服务器的插件
   - tag: forward_local
@@ -81,7 +79,7 @@ plugin:
     args:
       upstream:
         - addr: 'tcp://1.1.1.1'
-          idle_timeout: 60
+          idle_timeout: 90
 
   ################ 匹配器插件 #################
 
@@ -99,19 +97,13 @@ plugin:
       domain:
         - 'ext:./geosite.dat:geolocation-!cn'
 
-  # 匹配广告域名的插件
-  - tag: query_is_ad_domain
-    type: query_matcher
-    args:
-      domain:
-        - 'ext:./geosite.dat:category-ads-all'
-
   # 匹配本地 IP 的插件
   - tag: response_has_local_ip
     type: response_matcher
     args:
       ip:
         - 'ext:./geoip.dat:cn'
+
   - tag: blacklist
     type: 'ipset'
     args:
