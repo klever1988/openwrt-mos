@@ -5,7 +5,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mosdns
-PKG_VERSION:=47acee1
+PKG_VERSION:=6d24afb
 PKG_RELEASE:=$(AUTORELEASE)
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
@@ -44,6 +44,12 @@ define Package/mosdns
   DEPENDS:=$(GO_ARCH_DEPENDS)
 endef
 
+define Package/mosdns-geodata
+  $(call Package/mosdns/Default)
+  TITLE+= (geodata resources)
+  DEPENDS:=mosdns
+endef
+
 define Package/mosdns/config
 config MOSDNS_COMPRESS_GOPROXY
 	bool "Compiling with GOPROXY proxy"
@@ -59,8 +65,32 @@ ifeq ($(CONFIG_MOSDNS_COMPRESS_GOPROXY),y)
 	export GOPROXY=https://goproxy.baidu.com
 endif
 
+GEOIP_VER:=202106030115
+GEOIP_FILE:=geoip.dat.$(GEOIP_VER)
+
+define Download/geoip
+  URL:=https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download
+  URL_FILE:=geoip.dat
+  FILE:=$(GEOIP_FILE)
+  HASH:=skip
+endef
+
+GEOSITE_VER:=20210531212831
+GEOSITE_FILE:=dlc.dat.$(GEOSITE_VER)
+
+define Download/geosite
+  URL:=https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download
+  URL_FILE:=geosite.dat
+  FILE:=$(GEOSITE_FILE)
+  HASH:=skip
+endef
+
 define Build/Prepare
 	$(call Build/Prepare/Default)
+ifneq ($(CONFIG_PACKAGE_mosdns-geodata),)
+	$(call Download,geoip)
+	$(call Download,geosite)
+endif
 endef
 
 GO_PKG_TARGET_VARS:=$(filter-out CGO_ENABLED=%,$(GO_PKG_TARGET_VARS)) CGO_ENABLED=0
@@ -76,5 +106,12 @@ define Package/mosdns/install
 	$(call GoPackage/Package/Install/Bin,$(1))
 endef
 
+define Package/mosdns-geodata/install
+	$(INSTALL_DIR) $(1)/etc/mosdns
+	$(INSTALL_DATA) $(DL_DIR)/$(GEOIP_FILE) $(1)/etc/mosdns/geoip.dat
+	$(INSTALL_DATA) $(DL_DIR)/$(GEOSITE_FILE) $(1)/etc/mosdns/geosite.dat
+endef
+
 $(eval $(call GoBinPackage,mosdns))
 $(eval $(call BuildPackage,mosdns))
+$(eval $(call BuildPackage,mosdns-geodata))
