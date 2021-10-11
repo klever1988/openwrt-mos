@@ -11,7 +11,7 @@ plugin:
     type: server
     args:
       entry:
-        - _default_cache  # 启用缓存
+        - lazy_cache  # 启用缓存
         - main_sequence   # 分流逻辑
       server:       # 服务器监听地址与协议。
         - protocol: udp
@@ -71,7 +71,7 @@ plugin:
     type: fast_forward
     args:
       upstream:
-        - addr: '223.5.5.5'
+        - addr: '119.29.29.29'
 
   # 转发请求至远程服务器的插件
   - tag: forward_remote
@@ -111,3 +111,10 @@ plugin:
       set_name6: ''   # 如果非空，存放 ipv6 地址到这个表。这个表属性 family 需为 `inet6`。
       mask4: 24       # 写入 ipv4 地址时使用的掩码。默认: 24。
       mask6: 32       # 写入 ipv6 地址时使用的掩码。默认: 32。
+
+  - tag: lazy_cache
+    type: 'cache'
+    args:
+      size: 10240
+      lazy_cache_ttl: 1800
+      lazy_cache_reply_ttl: 30
