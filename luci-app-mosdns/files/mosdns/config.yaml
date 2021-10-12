@@ -115,14 +115,3 @@ plugin:
       size: 10240
       lazy_cache_ttl: 1800
       lazy_cache_reply_ttl: 30
-
-  - tag: 'real_ecs'
-    type: 'ecs'
-    args:
-      auto: false             # 是否自动将客户端请求的来源地址作为 ECS 附加到请求。如果为 true，则预设地址不会被使用。
-                              # 仅适用于公网的服务器。本地运行不要启用这个功能。
-      ipv4: '255.255.255.255' # 预设的 IPv4 地址。会优先附加在 A 请求里。
-      ipv6: 'ff00::'          # 预设的 IPv6 地址。会优先附加在 AAAA 请求里。
-      force_overwrite: false  # 如果请求已有 ECS，是否强制覆盖。
-      mask4: 24               # 用于 ipv4 地址的掩码。默认: 24。
-      mask6: 48               # 用于 ipv6 地址的掩码。默认: 48。
