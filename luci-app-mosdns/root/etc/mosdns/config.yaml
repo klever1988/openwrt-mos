@@ -16,9 +16,9 @@ plugin:
         - main_sequence   # 分流逻辑
       server:             # 服务器监听地址与协议。
         - protocol: udp
-          addr: 127.0.0.1:5335
+          addr: 0.0.0.0:5335
         - protocol: tcp
-          addr: 127.0.0.1:5335
+          addr: 0.0.0.0:5335
 
   ################# 可执行插件 ################
 
@@ -33,25 +33,12 @@ plugin:
             - _block_with_nxdomain  # 用 NXDOMAIN 屏蔽
             - _end
 
-        - if_and:
-            - '!query_is_local_domain'
-            - _qtype_AAAA           # 如果请求的 AAAA (ipv6) 类型
-          exec:
-            - _block_with_empty_response  # 用空白应答屏蔽
-            - _end
-
-        - if:
-            - query_is_local_domain   # 已知的本地域名
-            - '!_query_is_common'     # 和不常见的请求类型
-          exec:
-            - forward_local           # 用本地服务器
+        - primary:
+            - forward_local
             - if:
                 - response_has_local_ip
               exec:
                 - _end
-
-        - primary:
-            - forward_local
             - if:
                 - '!response_has_local_ip'
               exec:
@@ -61,8 +48,13 @@ plugin:
             - if:
                 - '!response_has_local_ip'
               exec:
+                - if:
+                    - _qtype_AAAA
+                  exec:
+                    - _block_with_empty_response
+                    - _end
                 - blacklist
-          fast_fallback: 200  # 这里建议设置成 local 服务器正常延时的 2~5 倍。
+          fast_fallback: 150  # 这里建议设置成 local 服务器正常延时的 2~5 倍。
                               # 这个延时保证了 local 延时偶尔变高时，其结果不会被 remote 抢答。
                               # 如果 local 超过这个延时还没响应，可以假设 local 出现了问题。
                               # 这时用就采用 remote 的应答。
@@ -83,6 +75,10 @@ plugin:
     args:
       upstream:
         - addr: 'tcp://1.1.1.1'
+          idle_timeout: 90
+        - addr: 'tcp://76.76.19.19'
+          idle_timeout: 90
+        - addr: 'tcp://208.67.222.222'
           idle_timeout: 90
 
   - tag: lazy_cache
@@ -129,4 +125,3 @@ plugin:
       set_name6: ''   # 如果非空，存放 ipv6 地址到这个表。这个表属性 family 需为 `inet6`。
       mask4: 24       # 写入 ipv4 地址时使用的掩码。默认: 24。
       mask6: 32       # 写入 ipv6 地址时使用的掩码。默认: 32。
-
