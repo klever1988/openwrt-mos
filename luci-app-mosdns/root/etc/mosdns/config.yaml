@@ -36,17 +36,17 @@ plugin:
         - primary:
             - forward_local
             - if:
-                - response_has_local_ip
+                - response_is_local
               exec:
                 - _end
             - if:
-                - '!response_has_local_ip'
+                - '!response_is_local'
               exec:
                 - _drop_response
           secondary:
             - forward_remote
             - if:
-                - '!response_has_local_ip'
+                - '!response_is_local'
               exec:
                 - if:
                     - _qtype_AAAA
@@ -67,7 +67,7 @@ plugin:
     args:
       upstream:
         - addr: '119.29.29.29'
-        - addr: '223.5.5.5.5'
+        - addr: '223.5.5.5'
 
   # 转发请求至远程服务器的插件
   - tag: forward_remote
@@ -111,12 +111,15 @@ plugin:
       domain:
         - 'ext:./geosite.dat:geolocation-!cn'
 
-  # 匹配本地 IP 的插件
-  - tag: response_has_local_ip
+  # 匹配本地解析结果的插件
+  - tag: response_is_local
     type: response_matcher
     args:
       ip:
         - 'ext:./geoip.dat:cn'
+      cname:
+        - 'ext:./geosite.dat:cn'
+      logical_and: false
 
   - tag: blacklist
     type: 'ipset'
