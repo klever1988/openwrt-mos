@@ -31,6 +31,7 @@ restore_setting()
   uci set passwall.@global[0].dns_forward='8.8.8.8'
   uci set passwall.@global[0].dns_cache='1'
   uci commit passwall
+  ipset add blacklist 1.1.1.1 2>&1 ||true
 }
 
 prepare_setting() {
@@ -44,6 +45,7 @@ prepare_setting() {
   uci del passwall.@global[0].dns_forward
   uci del passwall.@global[0].dns_cache
   uci commit passwall
+  ipset del blacklist 1.1.1.1 2>&1 ||true
 }
 
 restart_others() {
