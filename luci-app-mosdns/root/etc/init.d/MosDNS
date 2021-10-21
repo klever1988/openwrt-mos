@@ -21,38 +21,50 @@ service_triggers() {
 
 restore_setting()
 {
-  sed -i "/list server/d" /etc/config/dhcp
-  uci set dhcp.@dnsmasq[0].noresolv='0'
-  uci commit dhcp
-  uci set shadowsocksr.@global[0].pdnsd_enable='1'
-  uci commit shadowsocksr
-  uci set passwall.@global[0].dns_mode='pdnsd'
-  uci set passwall.@global[0].dns_forward='8.8.8.8'
-  uci set passwall.@global[0].dns_cache='1'
-  uci commit passwall
-  uci set vssr.@global[0].pdnsd_enable='1'
-  uci commit vssr
-  ipset -! add blacklist 1.1.1.1 2>&1
-  ipset -! add blacklist 76.76.19.19 2>&1
-  ipset -! add blacklist 208.67.222.222 2>&1
+  redirect=$(uci -q get MosDNS.MosDNS.redirect)
+  if [ $redirect -eq 1 ]; then
+    sed -i "/list server/d" /etc/config/dhcp
+    uci set dhcp.@dnsmasq[0].noresolv='0'
+    uci commit dhcp
+  fi
+  autoconf="$(uci -q get MosDNS.MosDNS.autoconf)"
+  if [ $autoconf -eq 1 ]; then
+    uci set shadowsocksr.@global[0].pdnsd_enable='1'
+    uci commit shadowsocksr
+    uci set passwall.@global[0].dns_mode='pdnsd'
+    uci set passwall.@global[0].dns_forward='8.8.8.8'
+    uci set passwall.@global[0].dns_cache='1'
+    uci commit passwall
+    uci set vssr.@global[0].pdnsd_enable='1'
+    uci commit vssr
+    ipset -! add blacklist 1.1.1.1 2>&1
+    ipset -! add blacklist 76.76.19.19 2>&1
+    ipset -! add blacklist 208.67.222.222 2>&1
+  fi
 }
 
 prepare_setting() {
-  sed -i "/list server/d" /etc/config/dhcp
-  uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
-  uci set dhcp.@dnsmasq[0].noresolv="1"
-  uci commit dhcp
-  uci set shadowsocksr.@global[0].pdnsd_enable='0'
-  uci commit shadowsocksr
-  uci set passwall.@global[0].dns_mode='nonuse'
-  uci del passwall.@global[0].dns_forward
-  uci del passwall.@global[0].dns_cache
-  uci commit passwall
-  uci set vssr.@global[0].pdnsd_enable='0'
-  uci commit vssr
-  ipset -! del blacklist 1.1.1.1 2>&1
-  ipset -! del blacklist 76.76.19.19 2>&1
-  ipset -! del blacklist 208.67.222.222 2>&1
+  redirect=$(uci -q get MosDNS.MosDNS.redirect)
+  if [ $redirect -eq 1 ]; then
+    sed -i "/list server/d" /etc/config/dhcp
+    uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
+    uci set dhcp.@dnsmasq[0].noresolv="1"
+    uci commit dhcp
+  fi
+  autoconf="$(uci -q get MosDNS.MosDNS.autoconf)"
+  if [ $autoconf -eq 1 ]; then
+    uci set shadowsocksr.@global[0].pdnsd_enable='0'
+    uci commit shadowsocksr
+    uci set passwall.@global[0].dns_mode='nonuse'
+    uci del passwall.@global[0].dns_forward
+    uci del passwall.@global[0].dns_cache
+    uci commit passwall
+    uci set vssr.@global[0].pdnsd_enable='0'
+    uci commit vssr
+    ipset -! del blacklist 1.1.1.1 2>&1
+    ipset -! del blacklist 76.76.19.19 2>&1
+    ipset -! del blacklist 208.67.222.222 2>&1
+  fi
 }
 
 restart_others() {
@@ -119,8 +131,7 @@ start_service() {
   procd_set_param respawn "${respawn_threshold:-3600}" "${respawn_timeout:-5}" "${respawn_retry:-5}"
   procd_close_instance MOSDNS
 
-  redirect=$(uci -q get MosDNS.MosDNS.redirect)
-  [ "${redirect}" = "1" ] && prepare_setting
+  prepare_setting
   restart_others
 
   echo "MosDNS turn on"
@@ -133,10 +144,9 @@ stop_service() {
   echo "enabled="$enabled""
 
   config_load "MosDNS"
-    enabled=$(uci -q get MosDNS.MosDNS.enabled)
-    #redirect=$(uci -q get MosDNS.MosDNS.redirect)
-    [ "${enabled}" = "0" ] && restore_setting
-    restart_others
-    delcron
+  enabled=$(uci -q get MosDNS.MosDNS.enabled)
+  [ "${enabled}" = "0" ] && restore_setting
+  restart_others
+  delcron
 
 }
